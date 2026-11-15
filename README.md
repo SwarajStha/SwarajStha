@@ -1,4 +1,4 @@
-<h1 align="center">Hi, I'm Swaraj 👋</h1>
+<h1 align="center">Hi, Swaraj here 👋</h1>
 
 <p align="center">
   Junior Fullstack Developer · M.Sc. Management and Digital Technology @ TUM
@@ -13,9 +13,9 @@
   </a>
 </p>
 
-<h3 align="center">🧩 Building apps</h3>
+<h3>🧩 Building apps</h3>
 
-<p align="center">
+<p>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
   <img alt="Vue 3" src="https://img.shields.io/badge/Vue%203-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D" />
   <img alt="Nuxt" src="https://img.shields.io/badge/Nuxt-002E3B?style=for-the-badge&logo=nuxt&logoColor=00DC82" />
@@ -26,9 +26,9 @@
   <img alt="React" src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
 </p>
 
-<h3 align="center">📊 Data and AI</h3>
+<h3>📊 Data and AI</h3>
 
-<p align="center">
+<p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="pandas" src="https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white" />
   <img alt="NumPy" src="https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white" />
@@ -36,9 +36,9 @@
   <img alt="pgvector" src="https://img.shields.io/badge/pgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white" />
 </p>
 
-<h3 align="center">📦 Additional experience</h3>
+<h3>📦 Additional experience</h3>
 
-<p align="center">
+<p>
   <img alt="Java" src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img alt="DigitalOcean" src="https://img.shields.io/badge/DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white" />
