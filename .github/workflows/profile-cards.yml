@@ -1,0 +1,66 @@
+name: Refresh profile cards
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # daily, 02:30 UTC
+  workflow_dispatch: # lets you run it by hand from the Actions tab
+
+env:
+  # Language card: 6 languages, compact bar. Jupyter is hidden because notebook files are
+  # huge and would swamp everything else. size_weight/count_weight balance "bytes of code"
+  # against "number of repos using it" so one big repo doesn't dominate.
+  LANGS: "layout=compact&langs_count=6&hide=jupyter%20notebook&size_weight=0.5&count_weight=0.5&hide_border=true"
+  # Stats card as a contribution breakdown: commits, PRs, merged PRs, reviews, issues.
+  STATS: "show_icons=true&hide_title=true&hide_rank=true&hide_border=true&hide=stars,contribs&show=reviews,prs_merged"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Top languages (light)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: top-langs
+          options: "username=${{ github.repository_owner }}&${{ env.LANGS }}&theme=default"
+          path: profile/top-langs-light.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Top languages (dark)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: top-langs
+          options: "username=${{ github.repository_owner }}&${{ env.LANGS }}&theme=github_dark"
+          path: profile/top-langs-dark.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Stats (light)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: stats
+          options: "username=${{ github.repository_owner }}&${{ env.STATS }}&theme=default"
+          path: profile/stats-light.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Stats (dark)
+        uses: stats-organization/github-readme-stats-action@v2
+        with:
+          card: stats
+          options: "username=${{ github.repository_owner }}&${{ env.STATS }}&theme=github_dark"
+          path: profile/stats-dark.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Commit updated cards
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile/*.svg
+          git commit -m "Refresh profile cards" || exit 0
+          git push
