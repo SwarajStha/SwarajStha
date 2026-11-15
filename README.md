@@ -43,3 +43,14 @@
   <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img alt="DigitalOcean" src="https://img.shields.io/badge/DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white" />
 </p>
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://gist.githubusercontent.com/SwarajStha/eae391a28f62ace87c6b93f9dfa37643/raw/stats-dark.svg" />
+    <img width="49%" alt="GitHub stats: stars, commits, pull requests and issues" src="https://gist.githubusercontent.com/SwarajStha/eae391a28f62ace87c6b93f9dfa37643/raw/stats-light.svg" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://gist.githubusercontent.com/SwarajStha/eae391a28f62ace87c6b93f9dfa37643/raw/top-langs-dark.svg" />
+    <img width="49%" alt="Most used languages" src="https://gist.githubusercontent.com/SwarajStha/eae391a28f62ace87c6b93f9dfa37643/raw/top-langs-light.svg" />
+  </picture>
+</p>
