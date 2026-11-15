@@ -1,0 +1,72 @@
+name: Update stats cards
+
+on:
+  schedule:
+    - cron: "42 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: stats-cards
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Third-party code that receives STATS_TOKEN: pinned to a reviewed commit, bump deliberately.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: kboshold/simple-github-readme-stats
+          ref: 82cc3253ee85418cf7278c016ec691437c7e49c4
+          path: sgrs
+          persist-credentials: false
+
+      - name: Use this repo's config
+        run: cp .github/stats.config.ts sgrs/stats.config.ts
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: sgrs/package.json
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: sgrs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: sgrs
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch data
+        working-directory: sgrs
+        run: pnpm data:fetch
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+          STATS_ORGS: ${{ secrets.STATS_ORGS }}
+
+      - name: Render cards
+        working-directory: sgrs
+        run: pnpm svg:render
+
+      - name: Push to Gist
+        working-directory: sgrs
+        run: pnpm gist:push
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+
+      - name: Keepalive
+        if: success()
+        run: gh workflow enable stats-cards.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
