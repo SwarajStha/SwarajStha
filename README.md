@@ -1,16 +1,12 @@
 <h1 align="center">Hi, Swaraj here 👋</h1>
 
 <p align="center">
-  Junior Fullstack Developer · M.Sc. Management and Digital Technology @ TUM
+  Junior Fullstack Developer @ SideStream · M.Sc. Management and Digital Technology @ TUM
 </p>
 
 <p align="center">
-  <a href="https://swarajshrestha.tech">
-    <img alt="Portfolio" src="https://img.shields.io/badge/Portfolio-swarajshrestha.tech-111827?style=for-the-badge" />
-  </a>
-  <a href="https://linkedin.com/in/swaraj-shrestha">
-    <img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge" />
-  </a>
+  <a href="https://swarajshrestha.tech"><img alt="Portfolio" src="https://img.shields.io/badge/Portfolio-swarajshrestha.tech-111827?style=for-the-badge" /></a>
+  <a href="https://linkedin.com/in/swaraj-shrestha"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge" /></a>
 </p>
 
 <h3>🧩 Building apps</h3>
