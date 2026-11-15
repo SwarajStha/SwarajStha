@@ -1,0 +1,217 @@
+diff --git a/src/config/load.ts b/src/config/load.ts
+index 9931126..e1d1675 100644
+--- a/src/config/load.ts
++++ b/src/config/load.ts
+@@ -12,6 +12,7 @@ type Env = Record<string, string | undefined>;
+ const EnvListsSchema = z.object({
+   STATS_ORGS: z.array(LoginSchema),
+   STATS_EXCLUDE_REPOS: z.array(RepoNameSchema),
++  STATS_INCLUDE_REPOS: z.array(RepoNameSchema),
+ });
+ 
+ function splitList(value: string | undefined): string[] {
+@@ -45,6 +46,7 @@ export function resolveConfig(input: unknown, env: Env): Config {
+   const lists = EnvListsSchema.safeParse({
+     STATS_ORGS: splitList(env.STATS_ORGS),
+     STATS_EXCLUDE_REPOS: splitList(env.STATS_EXCLUDE_REPOS),
++    STATS_INCLUDE_REPOS: splitList(env.STATS_INCLUDE_REPOS),
+   });
+ 
+   if (!config.success || !lists.success) {
+@@ -62,6 +64,10 @@ export function resolveConfig(input: unknown, env: Env): Config {
+       config.data.excludeRepos,
+       lists.data.STATS_EXCLUDE_REPOS,
+     ),
++    includeRepos: mergeUnique(
++      config.data.includeRepos,
++      lists.data.STATS_INCLUDE_REPOS,
++    ),
+   };
+ }
+ 
+diff --git a/src/config/schema.ts b/src/config/schema.ts
+index e262fb4..77faf38 100644
+--- a/src/config/schema.ts
++++ b/src/config/schema.ts
+@@ -71,6 +71,7 @@ export const ConfigSchema = z.object({
+   username: LoginSchema,
+   orgs: z.array(LoginSchema).default([]),
+   excludeRepos: z.array(RepoNameSchema).default([]),
++  includeRepos: z.array(RepoNameSchema).default([]),
+   commitsWindow: z.enum(["all", "year"]).default("all"),
+   gist: z.object({
+     id: z
+diff --git a/src/fetch/aggregate.ts b/src/fetch/aggregate.ts
+index 65512e4..463828b 100644
+--- a/src/fetch/aggregate.ts
++++ b/src/fetch/aggregate.ts
+@@ -3,7 +3,8 @@ import type { CommitInputs } from "./queries/commits.ts";
+ import type { RepoNode } from "./queries/repos.ts";
+ import type { LanguageStat } from "./snapshot.ts";
+ 
+-export type RepoFilter = Pick<Config, "username" | "orgs" | "excludeRepos">;
++export type RepoFilter = Pick<Config, "username" | "orgs" | "excludeRepos"> &
++  Partial<Pick<Config, "includeRepos">>;
+ 
+ export interface RepoTotals {
+   stars: number;
+@@ -28,12 +29,15 @@ function countedRepos(repos: RepoNode[], filter: RepoFilter): RepoNode[] {
+   const excluded = new Set(
+     filter.excludeRepos.map((name) => name.toLowerCase()),
+   );
++  const included = new Set(
++    (filter.includeRepos ?? []).map((name) => name.toLowerCase()),
++  );
+   const seen = new Set<string>();
+ 
+   return repos.filter((repo) => {
+     const key = repo.nameWithOwner.toLowerCase();
+     if (
+-      !owners.has(repo.ownerLogin.toLowerCase()) ||
++      (!owners.has(repo.ownerLogin.toLowerCase()) && !included.has(key)) ||
+       excluded.has(key) ||
+       seen.has(key)
+     ) {
+diff --git a/src/fetch/index.ts b/src/fetch/index.ts
+index afefe99..46a9418 100644
+--- a/src/fetch/index.ts
++++ b/src/fetch/index.ts
+@@ -2,7 +2,7 @@ import type { Config } from "../config/schema.ts";
+ import { aggregateRepos, estimateCommits } from "./aggregate.ts";
+ import { type ClientOptions, createClient } from "./client.ts";
+ import { fetchCommitInputs } from "./queries/commits.ts";
+-import { fetchRepos } from "./queries/repos.ts";
++import { fetchRepo, fetchRepos } from "./queries/repos.ts";
+ import { fetchUser } from "./queries/user.ts";
+ import { SNAPSHOT_SCHEMA_VERSION, type Snapshot } from "./snapshot.ts";
+ 
+@@ -19,15 +19,19 @@ export async function fetchSnapshot(
+   const client = createClient(token, options);
+ 
+   const user = await fetchUser(client, config.username);
+-  const [commitInputs, repos] = await Promise.all([
++  const [commitInputs, repos, includedRepos] = await Promise.all([
+     fetchCommitInputs(client, config.username, {
+       window: config.commitsWindow,
+       createdAt: user.createdAt,
+       now,
+     }),
+     fetchRepos(client, config.username),
++    Promise.all(config.includeRepos.map((name) => fetchRepo(client, name))),
+   ]);
+-  const { stars, languages } = aggregateRepos(repos, config);
++  const { stars, languages } = aggregateRepos(
++    [...repos, ...includedRepos],
++    config,
++  );
+ 
+   return {
+     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+diff --git a/src/fetch/queries/repos.ts b/src/fetch/queries/repos.ts
+index a8f8277..f3cf1c7 100644
+--- a/src/fetch/queries/repos.ts
++++ b/src/fetch/queries/repos.ts
+@@ -5,6 +5,25 @@ import type { GraphQLClient } from "../client.ts";
+ const PAGE_SIZE = 100;
+ const MAX_PAGES = 20;
+ 
++const REPO_FIELDS = `
++  nameWithOwner
++  isFork
++  owner { login }
++  stargazers { totalCount }
++  languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
++    edges {
++      size
++      node { name color }
++    }
++  }
++`;
++
++const REPO_QUERY = `
++  query Repo($owner: String!, $name: String!) {
++    repository(owner: $owner, name: $name) { ${REPO_FIELDS} }
++  }
++`;
++
+ const REPOS_QUERY = `
+   query Repos($login: String!, $after: String) {
+     user(login: $login) {
+@@ -13,18 +32,7 @@ const REPOS_QUERY = `
+         after: $after
+         ownerAffiliations: [OWNER, ORGANIZATION_MEMBER, COLLABORATOR]
+       ) {
+-        nodes {
+-          nameWithOwner
+-          isFork
+-          owner { login }
+-          stargazers { totalCount }
+-          languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+-            edges {
+-              size
+-              node { name color }
+-            }
+-          }
+-        }
++        nodes { ${REPO_FIELDS} }
+         pageInfo { hasNextPage endCursor }
+       }
+     }
+@@ -80,6 +88,36 @@ export interface RepoNode {
+   languages: RepoLanguage[];
+ }
+ 
++function toRepoNode(node: z.infer<typeof RepoSchema>): RepoNode {
++  return {
++    nameWithOwner: node.nameWithOwner,
++    ownerLogin: node.owner.login,
++    isFork: node.isFork,
++    stars: node.stargazers.totalCount,
++    languages: (node.languages?.edges ?? []).map((edge) => ({
++      name: edge.node.name,
++      color: edge.node.color,
++      size: edge.size,
++    })),
++  };
++}
++
++export async function fetchRepo(
++  client: GraphQLClient,
++  nameWithOwner: string,
++): Promise<RepoNode> {
++  const slash = nameWithOwner.indexOf("/");
++  const { repository } = await client.query(
++    REPO_QUERY,
++    {
++      owner: nameWithOwner.slice(0, slash),
++      name: nameWithOwner.slice(slash + 1),
++    },
++    z.object({ repository: RepoSchema }),
++  );
++  return toRepoNode(repository);
++}
++
+ export async function fetchRepos(
+   client: GraphQLClient,
+   username: string,
+@@ -95,19 +133,7 @@ export async function fetchRepos(
+     );
+     const { nodes, pageInfo } = response.user.repositories;
+ 
+-    for (const node of nodes) {
+-      repos.push({
+-        nameWithOwner: node.nameWithOwner,
+-        ownerLogin: node.owner.login,
+-        isFork: node.isFork,
+-        stars: node.stargazers.totalCount,
+-        languages: (node.languages?.edges ?? []).map((edge) => ({
+-          name: edge.node.name,
+-          color: edge.node.color,
+-          size: edge.size,
+-        })),
+-      });
+-    }
++    repos.push(...nodes.map(toRepoNode));
+ 
+     if (!pageInfo.hasNextPage || pageInfo.endCursor === null) {
+       return repos;

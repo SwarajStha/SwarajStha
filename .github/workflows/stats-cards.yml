@@ -30,8 +30,23 @@ jobs:
           path: sgrs
           persist-credentials: false
 
-      - name: Use this repo's config
-        run: cp .github/stats.config.ts sgrs/stats.config.ts
+      - name: Mask private repo names in logs
+        env:
+          STATS_INCLUDE_REPOS: ${{ secrets.STATS_INCLUDE_REPOS }}
+        run: |
+          IFS=',' read -ra repos <<< "$STATS_INCLUDE_REPOS"
+          for repo in "${repos[@]}"; do
+            repo="$(echo "$repo" | xargs)"
+            if [ -n "$repo" ]; then
+              echo "::add-mask::$repo"
+              echo "::add-mask::${repo#*/}"
+            fi
+          done
+
+      - name: Apply include-repos patch and this repo's config
+        run: |
+          git -C sgrs apply "$GITHUB_WORKSPACE/.github/stats-cards.patch"
+          cp .github/stats.config.ts sgrs/stats.config.ts
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
@@ -52,7 +67,7 @@ jobs:
         run: pnpm data:fetch
         env:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
-          STATS_ORGS: ${{ secrets.STATS_ORGS }}
+          STATS_INCLUDE_REPOS: ${{ secrets.STATS_INCLUDE_REPOS }}
 
       - name: Render cards
         working-directory: sgrs
